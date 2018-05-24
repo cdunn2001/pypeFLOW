@@ -2,6 +2,8 @@ WHEELHOUSE?=wheelhouse
 PIP=pip wheel --wheel-dir ${WHEELHOUSE} --find-links ${WHEELHOUSE}
 MY_TEST_FLAGS?=-v -s --durations=0
 
+mytest:
+	py.test ${MY_TEST_FLAGS} --doctest-modules pypeflow/mains/snap.py
 default:
 pylint:
 	pylint --errors-only pypeflow/ pwatcher/

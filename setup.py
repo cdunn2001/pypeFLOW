@@ -24,6 +24,7 @@ setup(
             'pwatcher-main=pwatcher.mains.pwatcher:main',
             'pwatcher-pypeflow-example=pwatcher.mains.pypeflow_example:main',
             'heartbeat-wrapper=pwatcher.mains.fs_heartbeat:main',
+            'snap=pypeflow.mains.snap:main',
         ],
     },
     package_data={'pwatcher.mains': ['*.sh']}
