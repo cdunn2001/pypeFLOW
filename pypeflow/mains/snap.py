@@ -19,12 +19,17 @@ def parse_args(argv):
             help='n/a')
     parser.add_argument('--snakefile', '-s',
             help='n/a')
-    parser.add_argument('--cores', '--jobs', '-j', type=int,
-            metavar='N',
-            help='n/a')
+    parser.add_argument('--cores', '--jobs', type=int,
+            metavar='N', default=1,
+            help='Use at most N cores in parallel. (See also -j)')
+    parser.add_argument('-j', action='store_true',
+            help='Set cores/jobs to number of cores on machine. (Unlike snakemake, we cannot accept "-j N", as flag options cannot take args.)')
     parser.add_argument('--local-cores', type=int,
             metavar='N',
             help='n/a')
+    parser.add_argument('--stats',
+            metavar='FILE',
+            help='Write stats about Snakefile execution in JSON format to the given file.')
     parser.add_argument('--resources', nargs='+',
             help='n/a')
     parser.add_argument('--config', nargs='+',
