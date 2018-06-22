@@ -1,12 +1,64 @@
-import pypeflow
 from .. import io
-import argparse
-import sys
+import pypeflow
+import argparse, logging, re, sys
+
+LOG = logging.getLogger(__name__)
 
 def foo():
     """
     >>> foo()
     """
+re_rule = re.compile(r'^rule\s+[^:]+\s*:')
+def isrule(line):
+    """
+    >>> isrule('rule a:')
+    True
+    >>> isrule(' rule indented:')
+    False
+    """
+    return bool(re_rule.search(line))
+
+def iscomment(line):
+    """
+    >>> iscomment('# comment')
+    True
+    >>> iscomment('not comment #')
+    False
+    """
+    # We want only column-0 comments.
+    return line.startswith('#')
+
+def isindented(line):
+    """
+    >>> isindented('\tfoo')
+    True
+    >>> isindented(' foo')
+    True
+    >>> isindented('foo\tfoo')
+    False
+    """
+    return line != line.lstrip()
+
+def split_snakefile(stream):
+    header = []
+    rules = []
+    footer = []
+    section = header
+    for line in stream:
+        print(line)
+        if isrule(line):
+            section = rules
+        elif section is rules and not iscomment(line) and not isindented(line):
+            section = footer
+        section.append(line)
+    return header, rules, footer
+
+def snakemake(args):
+    LOG.debug('Reading from {!r}'.format(args.snakefile))
+    with open(args.snakefile) as stream:
+        header, rules, footer = split_snakefile(stream)
+    LOG.info(header)
+    LOG.info(footer)
 
 def parse_args(argv):
     """
@@ -115,3 +167,6 @@ def main(argv=sys.argv):
     print('hi', argv)
     args = parse_args(argv)
     print('args:', args)
+    level = logging.DEBUG if args.debug else logging.INFO if args.verbose else logging.WARN
+    logging.basicConfig(level=level)
+    snakemake(args)
