@@ -101,7 +101,15 @@ def parse_args(argv):
     parser.add_argument('--jobscript', '--js',
             help='n/a')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(pypeflow.version))
-    return parser.parse_args(argv[1:])
+    args = parser.parse_args(argv[1:])
+    if args.j:
+        import multiprocessing
+        ncores = multiprocessing.cpu_count()
+        if args.cores != 1 and args.cores != ncores:
+            msg = 'Cannot set both -j and --cores={} (ncores={})'.format(args.cores, ncores)
+            raise Exception(msg)
+        args.cores = ncores
+    return args
 
 def main(argv=sys.argv):
     print('hi', argv)
