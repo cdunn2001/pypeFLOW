@@ -1,6 +1,6 @@
 from .. import io
-import pypeflow
-import argparse, logging, re, sys
+import pypeflow.tasks
+import argparse, collections, logging, pprint, re, sys
 
 LOG = logging.getLogger(__name__)
 
@@ -52,43 +52,82 @@ def split_snakefile(stream):
         section.append(line)
     return header, rules, footer
 
-def parse_rules(lines):
+def parse_indented_text(lines):
     """
     Drop all comments.
-    Return list of lists of lists ..., based on indentation.
+    Return list of (text, list of (text, list of ...)), based on indentation.
     """
-    rule = []
-    inrule = False
-    for line in lines:
-        if inrule:
-            if not isrule(line) and not iscomment(line):
-                if not iscomment(line.lstrip()) and not not line.strip():
-                    rule.append(line)
+    # We keep 2 matching queues.
+    # (It could be a single queue of pairs, but this is easier
+    #  to read.)
+    # Ones is a stack of indentations.
+    # The other is a stack of tree-lists for appending.
+    # A tree-list is the recursive return type, list(text, treelist).
+    # The top tree-list is actually the sub-tree-list of the last tuple
+    # of the next-to-list stack element, so when we pop it we do not
+    # need to record it anyway.
+    textq = collections.deque()
+    indentq = collections.deque()
+    textq.append(list())
+    indentq.append('')
+    re_indent = re.compile(r'^(\s*)(.*)$')
+    try:
+        nlines = 0
+        for line in lines:
+            nlines += 1
+            mo = re_indent.search(line)
+            if not mo:
+                # This regex should match any line.
+                msg = 'Pattern {!r} did not match line {!r}'.format(
+                        re_indent.pattern, line)
+                raise Exception(msg)
+            indent, text = mo.groups()
+            text = text.rstrip()
+            if text.startswith('#') or text == '':
+                # Skip comments and blank lines.
                 continue
-            yield rule
-            rule = []
-            inrule = False
-        if iscomment(line) or not line.rstrip():
-            continue
-        mo = re_rule.search(line)
-        if not mo:
-            msg = 'Pattern {!r} did not match line {!r}'.format(
-                    re_rule.pattern, line)
-            raise Exception(msg)
-        inrule = True
-        rule.append(line)
-    if rule:
-        yield rule
+            while len(indent) < len(indentq[-1]):
+                indentq.pop()
+                textq.pop()
+            if len(indent) > len(indentq[-1]):
+                #print('top:', textq[-1])
+                indentq.append(indent)
+                textq.append(textq[-1][-1][1]) # not a copy
+            if indent != indentq[-1]:
+                msg = 'Detected indentation error. {!r} != {!r} at text #{}:\n{}'.format(
+                        indent, indentq[-1], nlines, text)
+                raise Exception(msg)
+            textq[-1].append((text, list()))
+        return textq[0]
+    except:
+        msg = '\nCurrent textq==\n{}\nCurrent indentq==\n{}'.format(
+                pprint.pformat(textq), pprint.pformat(indentq))
+        LOG.error(msg)
+        raise
 
+def gen_pypeflow_task(rule_text, tree_list):
+    dist = None
+    parameters = None
+    script = 'echo HELLO'
+    inputs = dict()
+    outputs = dict()
+    mo = re_rule.search(rule_text)
+    assert mo, (mo, re_rule.pattern, rule_text)
+    for (sub_text, sub_list) in tree_list:
+        print(sub_text)
+    #gen_task(script, inputs, outputs, parameters, dist)
 def snakemake(args):
     LOG.debug('Reading from {!r}'.format(args.snakefile))
     with open(args.snakefile) as stream:
         header, middle, footer = split_snakefile(stream)
     print('middle:', middle)
-    rules = list(parse_rules(middle))
-    print('hello')
-    for rule in rules:
-        print("rule:", rule)
+    rule_tree = parse_indented_text(middle)
+    for rule in rule_tree:
+        print(pprint.pformat(rule))
+        assert isinstance(rule, tuple), rule
+        assert 2 == len(rule), rule
+        task = gen_pypeflow_task(*rule)
+
 
 def parse_args(argv):
     """
