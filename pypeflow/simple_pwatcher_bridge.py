@@ -490,6 +490,10 @@ class PypeNode(NodeBase):
         python = 'python2.7' # sys.executable fails sometimes because of binwrapper: SE-152
         tmpdir_flag = '--tmpdir {}'.format(self.use_tmpdir) if self.use_tmpdir else ''
         cmd = '{} -m pypeflow.do_task {} {}'.format(python, tmpdir_flag, task_json_fn)
+        pstree = 'pstree -apl'
+        pstree = 'pstree'
+        top = 'top -b -n 1'
+        top = 'echo NoGoodTopOnMac'
         script_content = """#!/bin/bash
 onerror () {{
   set -vx
@@ -497,9 +501,9 @@ onerror () {{
   rm -f top.txt
   which python
   which top
-  env -u LD_LIBRARY_PATH top -b -n 1 >| top.txt &
-  env -u LD_LIBRARY_PATH top -b -n 1 2>&1
-  pstree -apl
+  env -u LD_LIBRARY_PATH {top} >| top.txt &
+  env -u LD_LIBRARY_PATH {top} 2>&1
+  {pstree}
 }}
 trap onerror ERR
 env | sort
