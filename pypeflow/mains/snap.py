@@ -1,5 +1,6 @@
 from .. import io
 import pypeflow.tasks
+from pypeflow.simple_pwatcher_bridge import (PypeProcWatcherWorkflow, PypeTask, Dist)
 import argparse, collections, logging, pprint, re, sys
 
 LOG = logging.getLogger(__name__)
@@ -105,8 +106,17 @@ def parse_indented_text(lines):
         LOG.error(msg)
         raise
 
+def get_stuff(text, sub_list):
+    # For now, we do not support anything on the line with the colon,
+    # so we ignore 'text'.
+    foreval = 'dict({})'.format(' '.join(item[0] for item in sub_list))
+    return eval(foreval)
+
+re_input = re.compile(r'input\s*:')
+re_output = re.compile(r'output\s*:')
+re_shell = re.compile(r'shell\s*:')
 def gen_pypeflow_task(rule_text, tree_list):
-    dist = None
+    dist = Dist(local=True)
     parameters = None
     script = 'echo HELLO'
     inputs = dict()
@@ -114,20 +124,32 @@ def gen_pypeflow_task(rule_text, tree_list):
     mo = re_rule.search(rule_text)
     assert mo, (mo, re_rule.pattern, rule_text)
     for (sub_text, sub_list) in tree_list:
-        print(sub_text)
-    #gen_task(script, inputs, outputs, parameters, dist)
+        print('Processing', sub_text)
+        if re_input.search(sub_text):
+            inputs = get_stuff(sub_text, sub_list)
+        if re_output.search(sub_text):
+            outputs = get_stuff(sub_text, sub_list)
+        if re_shell.search(sub_text):
+            print('shell=', sub_list)
+            script = '\n'.join(eval(item[0]) for item in sub_list)
+    return pypeflow.tasks.gen_task(script, inputs, outputs, parameters, dist)
 def snakemake(args):
     LOG.debug('Reading from {!r}'.format(args.snakefile))
     with open(args.snakefile) as stream:
         header, middle, footer = split_snakefile(stream)
     print('middle:', middle)
     rule_tree = parse_indented_text(middle)
+    wf = PypeProcWatcherWorkflow(
+            #job_defaults=config['job.defaults'],
+            squash=False,
+    )
     for rule in rule_tree:
         print(pprint.pformat(rule))
         assert isinstance(rule, tuple), rule
         assert 2 == len(rule), rule
         task = gen_pypeflow_task(*rule)
-
+        wf.addTask(task)
+    wf.refreshTargets()
 
 def parse_args(argv):
     """
