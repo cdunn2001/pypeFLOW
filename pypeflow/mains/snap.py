@@ -8,7 +8,7 @@ def foo():
     """
     >>> foo()
     """
-re_rule = re.compile(r'^rule\s+[^:]+\s*:')
+re_rule = re.compile(r'^rule\s+([^:]+)\s*:')
 def isrule(line):
     """
     >>> isrule('rule a:')
@@ -45,7 +45,6 @@ def split_snakefile(stream):
     footer = []
     section = header
     for line in stream:
-        print(line)
         if isrule(line):
             section = rules
         elif section is rules and not iscomment(line) and not isindented(line):
@@ -53,12 +52,43 @@ def split_snakefile(stream):
         section.append(line)
     return header, rules, footer
 
+def parse_rules(lines):
+    """
+    Drop all comments.
+    Return list of lists of lists ..., based on indentation.
+    """
+    rule = []
+    inrule = False
+    for line in lines:
+        if inrule:
+            if not isrule(line) and not iscomment(line):
+                if not iscomment(line.lstrip()) and not not line.strip():
+                    rule.append(line)
+                continue
+            yield rule
+            rule = []
+            inrule = False
+        if iscomment(line) or not line.rstrip():
+            continue
+        mo = re_rule.search(line)
+        if not mo:
+            msg = 'Pattern {!r} did not match line {!r}'.format(
+                    re_rule.pattern, line)
+            raise Exception(msg)
+        inrule = True
+        rule.append(line)
+    if rule:
+        yield rule
+
 def snakemake(args):
     LOG.debug('Reading from {!r}'.format(args.snakefile))
     with open(args.snakefile) as stream:
-        header, rules, footer = split_snakefile(stream)
-    LOG.info(header)
-    LOG.info(footer)
+        header, middle, footer = split_snakefile(stream)
+    print('middle:', middle)
+    rules = list(parse_rules(middle))
+    print('hello')
+    for rule in rules:
+        print("rule:", rule)
 
 def parse_args(argv):
     """
