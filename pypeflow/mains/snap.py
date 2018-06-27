@@ -125,13 +125,11 @@ def gen_pypeflow_task(rule_text, tree_list):
     mo = re_rule.search(rule_text)
     assert mo, (mo, re_rule.pattern, rule_text)
     for (sub_text, sub_list) in tree_list:
-        print('Processing', sub_text)
         if re_input.search(sub_text):
             inputs = get_stuff(sub_text, sub_list)
         if re_output.search(sub_text):
             outputs = get_stuff(sub_text, sub_list)
         if re_shell.search(sub_text):
-            print('shell=', sub_list)
             script = '\n'.join(eval(item[0]) for item in sub_list)
         if re_run.search(sub_text):
             raise Exception('We support "shell", not "run" in "{}"\n{}'.format(
@@ -141,14 +139,13 @@ def snakemake(args):
     LOG.debug('Reading from {!r}'.format(args.snakefile))
     with open(args.snakefile) as stream:
         header, middle, footer = split_snakefile(stream)
-    print('middle:', middle)
     rule_tree = parse_indented_text(middle)
     wf = PypeProcWatcherWorkflow(
             #job_defaults=config['job.defaults'],
             squash=False,
     )
     for rule in rule_tree:
-        print(pprint.pformat(rule))
+        #print(pprint.pformat(rule))
         assert isinstance(rule, tuple), rule
         assert 2 == len(rule), rule
         task = gen_pypeflow_task(*rule)
@@ -259,9 +256,11 @@ def parse_args(argv):
     return args
 
 def main(argv=sys.argv):
-    print('hi', argv)
+    LOG.debug('argv={!r}'.format(argv))
     args = parse_args(argv)
-    print('args:', args)
+    LOG.debug('args={!r}'.format(args))
     level = logging.DEBUG if args.debug else logging.INFO if args.verbose else logging.WARN
-    logging.basicConfig(level=level)
+    logging.basicConfig(
+            format='[%(levelname)s] %(msg)s',
+        level=level)
     snakemake(args)
