@@ -115,6 +115,7 @@ def get_stuff(text, sub_list):
 re_input = re.compile(r'input\s*:')
 re_output = re.compile(r'output\s*:')
 re_shell = re.compile(r'shell\s*:')
+re_run = re.compile(r'run\s*:')
 def gen_pypeflow_task(rule_text, tree_list):
     dist = Dist(local=True)
     parameters = None
@@ -132,6 +133,9 @@ def gen_pypeflow_task(rule_text, tree_list):
         if re_shell.search(sub_text):
             print('shell=', sub_list)
             script = '\n'.join(eval(item[0]) for item in sub_list)
+        if re_run.search(sub_text):
+            raise Exception('We support "shell", not "run" in "{}"\n{}'.format(
+                rule_text, pprint.pformat(tree_list)))
     return pypeflow.tasks.gen_task(script, inputs, outputs, parameters, dist)
 def snakemake(args):
     LOG.debug('Reading from {!r}'.format(args.snakefile))
