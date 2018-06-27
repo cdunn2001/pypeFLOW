@@ -4,7 +4,7 @@ import collections
 import logging
 import os
 import pprint
-from .simple_pwatcher_bridge import (PypeTask, Dist)
+from .simple_pwatcher_bridge import (PypeTask, Dist, WildcardPypeTask)
 from . import io
 
 LOG = logging.getLogger(__name__)
@@ -30,12 +30,21 @@ def task_generic_bash_script(self):
 
 
 def gen_task(script, inputs, outputs, parameters=None, dist=None):
+    if any('{' in fn for fn in inputs.values()):
+        return WildcardPypeTask(
+            script, inputs, outputs, parameters, dist)
+    else:
+        return resolved_gen_task(script, inputs, outputs, parameters, dist)
+
+def resolved_gen_task(script, inputs, outputs, parameters, dist):
     """
     dist is used in two ways:
     1) in the pwatcher, to control job-distribution
     2) as additional parameters:
       - params.pypeflow_nproc
       - params.pypeflow_mb
+
+    This differs from gen_task() in that wildcards must be fully resolved.
     """
     if parameters is None:
         parameters = dict()

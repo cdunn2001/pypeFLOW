@@ -616,6 +616,15 @@ class Dist(object):
         self.job_dict = my_job_dict
         self.local = local
         self.use_tmpdir = use_tmpdir
+def WildcardPypeTask(script, inputs, outputs, parameters, dist):
+    t = WPT()
+    t.script = script
+    t.inputs = inputs
+    t.outputs = outputs
+    t.parameters = parameters
+    t.dist = dist
+    return t
+
 def PypeTask(inputs, outputs, parameters=None, wdir=None, bash_template=None, dist=None):
     """A slightly messy factory because we want to support both strings and PypeLocalFiles, for now.
     This can alter dict values in inputs/outputs if they were not already PypeLocalFiles.
